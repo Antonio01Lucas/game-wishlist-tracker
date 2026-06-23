@@ -166,7 +166,7 @@ export default function GameCard({ game, onGameDeleted, onGameUpdated }: { game:
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-gray-300 text-sm mb-1">Preço Alvo (R$) *</label>
-                  <input type="number" required step="0.01" value={editTargetPrice} onChange={(e) => setTargetPrice(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white focus:outline-none focus:border-blue-500" />
+                  <input type="number" required step="0.01" value={editTargetPrice} onChange={(e) => setEditTargetPrice(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white focus:outline-none focus:border-blue-500" />
                 </div>
                 <div>
                   <label className="block text-gray-300 text-sm mb-1">Preço Atual (R$)</label>
