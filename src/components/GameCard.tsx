@@ -217,6 +217,7 @@ export default function GameCard({ game, onGameDeleted, onGameUpdated }: { game:
                 >
                   <option value="Digital">Digital</option>
                   <option value="Física">Física</option>
+                  <option value="PlayStation">PlayStation (Digital)</option>
                 </select>
               </div>
 
