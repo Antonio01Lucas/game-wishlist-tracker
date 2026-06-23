@@ -32,7 +32,7 @@ export default function GameCard({ game, onGameDeleted, onGameUpdated }: { game:
 
     try {
       // 1. Faz o pedido para o nosso "Maestro"
-      const res = await fetch(`/api/scraper?jogo=${encodeURIComponent(game.game_title)}`);
+      const res = await fetch(`/api/scraper?jogo=${encodeURIComponent(game.game_title)}&midia=${encodeURIComponent(game.media_type)}`);
       const result = await res.json();
 
       if (!res.ok || !result.sucesso) {
