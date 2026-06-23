@@ -13,6 +13,7 @@ interface Game {
 
 export default function GameCard({ game, onGameDeleted, onGameUpdated }: { game: Game, onGameDeleted: (id: string) => void, onGameUpdated: (game: any) => void }) {
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false); // Novo estado para o loading do botão 🔄
   
   // Estados do Modal de Edição Global
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -25,7 +26,44 @@ export default function GameCard({ game, onGameDeleted, onGameUpdated }: { game:
   const currentPriceNum = game.current_price || Infinity;
   const atingiuMeta = currentPriceNum <= game.target_price;
 
-  // Função de Deleção
+  // FUNÇÃO NOVA: Busca o preço na nossa API e atualiza o Supabase
+  const handleRefreshPrice = async () => {
+    setIsRefreshing(true);
+
+    try {
+      // 1. Faz o pedido para o nosso "Maestro"
+      const res = await fetch(`/api/scraper?jogo=${encodeURIComponent(game.game_title)}`);
+      const result = await res.json();
+
+      if (!res.ok || !result.sucesso) {
+        throw new Error(result.erro || 'Falha ao buscar na API.');
+      }
+
+      const novoPreco = result.precoAtual;
+
+      // 2. Atualiza o banco de dados com o preço encontrado
+      const { data, error } = await supabase
+        .from('wishlist')
+        .update({ current_price: novoPreco })
+        .eq('id', game.id)
+        .select();
+
+      if (error) throw error;
+
+      // 3. Atualiza a tela instantaneamente
+      if (data) {
+        onGameUpdated(data[0]);
+        // Atualiza também o estado do modal caso o usuário queira editar logo depois
+        setEditCurrentPrice(novoPreco.toString()); 
+      }
+
+    } catch (err: any) {
+      alert('Erro ao sincronizar preço: ' + err.message);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   const handleDelete = async () => {
     const confirmDelete = window.confirm(`Tem certeza que deseja remover ${game.game_title}?`);
     if (!confirmDelete) return;
@@ -46,7 +84,6 @@ export default function GameCard({ game, onGameDeleted, onGameUpdated }: { game:
     }
   };
 
-  // Função de Edição Global
   const handleGlobalEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
@@ -77,7 +114,7 @@ export default function GameCard({ game, onGameDeleted, onGameUpdated }: { game:
       alert('Erro ao atualizar o jogo: ' + error.message);
     } else if (data) {
       setIsEditModalOpen(false);
-      onGameUpdated(data[0]); // Mágica da Atualização Otimista
+      onGameUpdated(data[0]);
     }
   };
 
@@ -86,7 +123,6 @@ export default function GameCard({ game, onGameDeleted, onGameUpdated }: { game:
   return (
     <div className={`bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-xl hover:border-gray-500 transition-colors relative ${isDeleting ? 'opacity-50 pointer-events-none' : ''}`}>
       
-      {/* Cabeçalho do Card */}
       <div className="flex justify-between items-start mb-4">
         <div className="flex flex-col gap-2 pr-4 truncate">
           <h2 className="text-xl font-bold truncate" title={game.game_title}>
@@ -97,28 +133,16 @@ export default function GameCard({ game, onGameDeleted, onGameUpdated }: { game:
           </span>
         </div>
         
-        {/* Botões de Ação */}
         <div className="flex gap-3">
-          <button 
-            onClick={() => setIsEditModalOpen(true)} 
-            disabled={isDeleting} 
-            className="text-gray-500 hover:text-blue-400 transition-colors" 
-            title="Editar informações do jogo"
-          >
+          <button onClick={() => setIsEditModalOpen(true)} disabled={isDeleting} className="text-gray-500 hover:text-blue-400 transition-colors" title="Editar informações do jogo">
             ⚙️
           </button>
-          <button 
-            onClick={handleDelete} 
-            disabled={isDeleting} 
-            className="text-gray-500 hover:text-red-500 transition-colors" 
-            title="Remover jogo"
-          >
+          <button onClick={handleDelete} disabled={isDeleting} className="text-gray-500 hover:text-red-500 transition-colors" title="Remover jogo">
             🗑️
           </button>
         </div>
       </div>
       
-      {/* Corpo do Card (Exibição Limpa) */}
       <div className="space-y-3">
         <div className="flex justify-between items-center bg-gray-900 p-3 rounded-lg">
           <span className="text-gray-400 text-sm">Preço Alvo:</span>
@@ -127,8 +151,19 @@ export default function GameCard({ game, onGameDeleted, onGameUpdated }: { game:
           </span>
         </div>
 
+        {/* Linha de Preço Atual Modificada */}
         <div className="flex justify-between items-center bg-gray-900 p-3 rounded-lg">
-          <span className="text-gray-400 text-sm">Preço Atual:</span>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-400 text-sm">Preço Atual:</span>
+            <button 
+              onClick={handleRefreshPrice} 
+              disabled={isRefreshing || isDeleting}
+              className={`text-gray-500 hover:text-blue-400 transition-colors ${isRefreshing ? 'animate-spin text-blue-400' : ''}`}
+              title="Buscar menor preço nas lojas digitais"
+            >
+              🔄
+            </button>
+          </div>
           <span className="font-mono font-bold w-24 text-right text-white">
             {game.current_price ? `R$ ${game.current_price.toFixed(2)}` : 'N/A'}
           </span>
@@ -147,7 +182,6 @@ export default function GameCard({ game, onGameDeleted, onGameUpdated }: { game:
         )}
       </div>
 
-      {/* MODAL DE EDIÇÃO GLOBAL */}
       {isEditModalOpen && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-2xl w-full max-w-md">
