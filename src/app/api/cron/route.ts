@@ -57,9 +57,12 @@ export async function GET(request: Request) {
       sucesso: true,
       mensagem: `Batida de rotina finalizada! ${atualizados} jogos foram atualizados no banco de dados.`,
     });
-  } catch (erro: any) {
+  } catch (erro) {
+    // Verificamos se o erro é realmente um objeto de Erro estruturado antes de tentar ler a mensagem
+    const mensagemErro = erro instanceof Error ? erro.message : String(erro);
+
     return NextResponse.json(
-      { erro: "Falha estrutural no Cron Job.", detalhes: erro.message },
+      { erro: "Falha estrutural no Cron Job.", detalhes: mensagemErro },
       { status: 500 },
     );
   }
